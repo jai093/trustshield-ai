@@ -255,7 +255,6 @@ python verify_mongodb.py
 ```
 [DEBUG] Testing analysis service...
 Settings configured:
-  MongoDB URI: mongodb+srv://...
   Ollama URL: https://api.ollama.com
   Model path: C:\Users\hp\Desktop\phishing\phishing_model.pkl
 
@@ -276,14 +275,12 @@ Located at: `c:\Users\hp\Desktop\phishing\trustshield-ai\.env`
 
 ```ini
 # MongoDB Configuration
-MONGODB_URI=mongodb+srv://ssanjay67372_db_user:q5dREEI9nSYdgjPD@cluster0.uouykyr.mongodb.net/InterprepAI?retryWrites=true&w=majority
 MONGODB_DATABASE=InterprepAI
 MONGODB_COLLECTION=analyses
 
 # Ollama LLM Configuration
 OLLAMA_BASE_URL=https://api.ollama.com
 OLLAMA_MODEL=gpt-oss:120b
-OLLAMA_API_KEY_1=e9f10951a7c34ac2b037e4846877fee5.iRJ7UDzbxYzJ9cnAhs8OY1_O
 
 # Trained ML Model Paths
 PHISHING_MODEL_PATH=C:\Users\hp\Desktop\phishing\phishing_model.pkl
