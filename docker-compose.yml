@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: trustshield-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-trustshield}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-trustshield123}
+      POSTGRES_DB: ${DB_NAME:-trustshield_ai}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trustshield"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trustshield-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: trustshield-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trustshield-network
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trustshield-backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-trustshield}:${DB_PASSWORD:-trustshield123}@postgres:5432/${DB_NAME:-trustshield_ai}
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "true"
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - trustshield-network
+    restart: unless-stopped
+
+  # Chrome Extension (served via simple HTTP server for development)
+  extension:
+    image: node:20-alpine
+    container_name: trustshield-extension
+    working_dir: /app
+    command: npm run dev
+    volumes:
+      - ./chrome-extension:/app
+    ports:
+      - "3001:5173"
+    networks:
+      - trustshield-network
+    restart: unless-stopped
+
+  # Dashboard (React)
+  dashboard:
+    image: node:20-alpine
+    container_name: trustshield-dashboard
+    working_dir: /app
+    command: npm run dev
+    volumes:
+      - ./dashboard:/app
+    ports:
+      - "3000:5173"
+    depends_on:
+      - backend
+    networks:
+      - trustshield-network
+    environment:
+      VITE_API_URL: http://localhost:8000
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  trustshield-network:
+    driver: bridge

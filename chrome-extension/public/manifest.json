@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "TrustShield AI - Phishing Detection",
+  "version": "1.0.0",
+  "description": "Real-time AI-powered phishing detection and prevention for Gmail and web email services",
+  
+  "icons": {
+    "16": "icons/icon.png",
+    "48": "icons/icon.png",
+    "128": "icons/icon.png"
+  },
+  
+  "permissions": [
+    "storage",
+    "alarms",
+    "identity",
+    "webRequest",
+    "tabs",
+    "scripting",
+    "activeTab"
+  ],
+  
+  "host_permissions": [
+    "*://mail.google.com/*",
+    "*://outlook.live.com/*",
+    "*://outlook.office.com/*",
+    "*://mail.yahoo.com/*"
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "TrustShield AI",
+    "default_icon": "icons/icon.png"
+  },
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["*://mail.google.com/mail/*"],
+      "js": ["content-scripts/gmail.js"],
+      "css": ["styles/gmail-overlay.css"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["*://outlook.live.com/*", "*://outlook.office.com/*"],
+      "js": ["content-scripts/outlook.js"],
+      "css": ["styles/outlook-overlay.css"],
+      "run_at": "document_start"
+    }
+  ],
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["images/*", "styles/*"],
+      "matches": ["*://mail.google.com/*", "*://outlook.live.com/*", "*://outlook.office.com/*"]
+    }
+  ],
+  
+  "options_page": "options.html",
+  
+  "minimum_chrome_version": "88"
+}

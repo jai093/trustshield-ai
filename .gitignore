@@ -1,0 +1,90 @@
+# Git ignore for TrustShield AI
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+ENV/
+.venv
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+dump.rdb
+
+# Dependencies
+/backend/.venv
+/chrome-extension/node_modules
+/dashboard/node_modules
+
+# Build outputs
+chrome-extension/build/
+dashboard/build/
+backend/dist/
+
+# Test coverage
+coverage/
+.coverage
+.pytest_cache/
+
+# Private keys and secrets
+*.pem
+*.key
+private/
+secrets/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Chrome extension
+chrome-extension/src/chrome

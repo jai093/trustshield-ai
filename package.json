@@ -1,0 +1,31 @@
+{
+  "name": "trustshield-ai",
+  "version": "1.0.0",
+  "description": "Enterprise Phishing Detection System - Full Stack",
+  "workspaces": [
+    "chrome-extension",
+    "dashboard"
+  ],
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && cd chrome-extension && npm install && cd ../dashboard && npm install",
+    "dev": "concurrently 'npm run dev:backend' 'npm run dev:extension' 'npm run dev:dashboard'",
+    "dev:backend": "cd backend && python -m pip install -r requirements.txt && uvicorn app.main:app --reload",
+    "dev:extension": "cd chrome-extension && npm run dev",
+    "dev:dashboard": "cd dashboard && npm run dev",
+    "build": "npm run build:extension && npm run build:dashboard",
+    "build:extension": "cd chrome-extension && npm run build",
+    "build:dashboard": "cd dashboard && npm run build",
+    "test": "npm run test:backend && npm run test:extension",
+    "test:backend": "cd backend && python -m pytest",
+    "test:extension": "cd chrome-extension && npm test",
+    "lint": "npm run lint:extension && npm run lint:backend",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
