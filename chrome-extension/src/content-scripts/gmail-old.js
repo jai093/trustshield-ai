@@ -4,7 +4,7 @@
  * Applies prevention actions: disable links, blur QR, show warning banner
  */
 
-const BACKEND_URL = 'http://localhost:8000';
+const BACKEND_URL = 'https://trustshield-ai-coh2.onrender.com';
 const ANALYSIS_TIMEOUT = 5000; // 5 seconds
 const EMAIL_SELECTOR = '[data-message-id]'; // Gmail email container
 const CACHE_KEY = 'trustshield_email_analysis_cache';

@@ -5,7 +5,7 @@
  */
 
 (() => {
-const BACKEND_URL = 'http://localhost:8000';
+const BACKEND_URL = 'https://trustshield-ai-coh2.onrender.com';
 const ANALYSIS_TIMEOUT = 5000;
 
 class GmailPhishingDetector {

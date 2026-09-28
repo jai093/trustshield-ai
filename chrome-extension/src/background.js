@@ -7,7 +7,7 @@ chrome.runtime.onInstalled.addListener(() => {
   
   // Initialize default settings
   chrome.storage.sync.set({
-    apiEndpoint: 'http://localhost:8000',
+    apiEndpoint: 'https://trustshield-ai-coh2.onrender.com',
     enableBackendAnalysis: false,
     riskThreshold: 50,
     privacyMode: true,
@@ -48,8 +48,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function analyzeEmail(emailData, sendResponse) {
   try {
     // Get settings
-    const settings = await getStorage({ apiEndpoint: 'http://localhost:8000' });
-    const apiEndpoint = settings.apiEndpoint || 'http://localhost:8000';
+    const settings = await getStorage({ apiEndpoint: 'https://trustshield-ai-coh2.onrender.com' });
+    const apiEndpoint = settings.apiEndpoint || 'https://trustshield-ai-coh2.onrender.com';
     
     // Send to backend API
     const response = await fetch(`${apiEndpoint}/api/analyze`, {
@@ -91,8 +91,8 @@ async function analyzeEmail(emailData, sendResponse) {
  */
 async function reportPhishing(reportData, sendResponse) {
   try {
-    const settings = await getStorage({ apiEndpoint: 'http://localhost:8000' });
-    const apiEndpoint = settings.apiEndpoint || 'http://localhost:8000';
+    const settings = await getStorage({ apiEndpoint: 'https://trustshield-ai-coh2.onrender.com' });
+    const apiEndpoint = settings.apiEndpoint || 'https://trustshield-ai-coh2.onrender.com';
     
     const response = await fetch(`${apiEndpoint}/api/report`, {
       method: 'POST',
@@ -170,8 +170,8 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 async function updateThreatIntelligence() {
   try {
-    const settings = await getStorage({ apiEndpoint: 'http://localhost:8000' });
-    const apiEndpoint = settings.apiEndpoint || 'http://localhost:8000';
+    const settings = await getStorage({ apiEndpoint: 'https://trustshield-ai-coh2.onrender.com' });
+    const apiEndpoint = settings.apiEndpoint || 'https://trustshield-ai-coh2.onrender.com';
     
     const response = await fetch(`${apiEndpoint}/api/threat-intelligence`);
     const threatData = await response.json();

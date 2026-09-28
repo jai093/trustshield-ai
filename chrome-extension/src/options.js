@@ -37,7 +37,7 @@ function setStatus(message, isError = false) {
 }
 
 chrome.storage.sync.get({
-  apiEndpoint: 'http://localhost:8000',
+  apiEndpoint: 'https://trustshield-ai-coh2.onrender.com',
   enableBackendAnalysis: false,
   riskThreshold: 50
 }, (values) => {
@@ -47,7 +47,7 @@ chrome.storage.sync.get({
 });
 
 function saveSettings() {
-  const apiEndpoint = apiInput.value.trim() || 'http://localhost:8000';
+  const apiEndpoint = apiInput.value.trim() || 'https://trustshield-ai-coh2.onrender.com';
   const enableBackendAnalysis = enableCheckbox.checked;
   const riskThreshold = Number(thresholdInput.value) || 50;
 

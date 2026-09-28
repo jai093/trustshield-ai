@@ -57,7 +57,7 @@ function setResult(message, isError = false) {
 
 async function fetchStats() {
   try {
-    const response = await fetch('http://localhost:8000/api/dashboard/stats', {
+    const response = await fetch('https://trustshield-ai-coh2.onrender.com/api/dashboard/stats', {
       headers: { 'X-User-Id': 'dashboard-user' }
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
