@@ -28,10 +28,11 @@ export default function Home() {
         'Content-Type': 'application/json',
         'X-User-Id': 'dashboard-user',
       };
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       
       const [statsRes, historyRes] = await Promise.all([
-        fetch('http://localhost:8000/api/dashboard/stats', { headers }),
-        fetch('http://localhost:8000/api/history?limit=10', { headers })
+        fetch(`${apiUrl}/api/dashboard/stats`, { headers }),
+        fetch(`${apiUrl}/api/history?limit=10`, { headers })
       ]);
       
       if (!statsRes.ok || !historyRes.ok) throw new Error('Failed to fetch dashboard data');
