@@ -52,12 +52,18 @@ class InMemoryAnalyticsStore:
     def get_stats(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         filtered = self._resolve_records(user_id)
         total = len(filtered)
-        total_phishing = sum(
-            1
-            for record in filtered
-            if record.get('risk_score', 0) >= 25 or len(record.get('prevention_actions', [])) > 0
-        )
-        total_blocked = sum(1 for record in filtered if len(record.get('prevention_actions', [])) > 0)
+        total_phishing = 0
+        total_blocked = 0
+        for record in filtered:
+            score = record.get('risk_score', 0)
+            suggested_action = record.get('suggested_action')
+            is_blocked = (suggested_action == 'block') or (not suggested_action and score >= 75)
+            is_threat = is_blocked or (suggested_action == 'warn') or (not suggested_action and score >= 50)
+            if is_blocked:
+                total_blocked += 1
+            if is_threat:
+                total_phishing += 1
+                
         detection_rate = round((total_phishing / total) if total else 0, 2)
 
         top_threats: Dict[str, int] = {}
@@ -89,7 +95,10 @@ class InMemoryAnalyticsStore:
                     timeline_dict[date_str] = {'date': date_str, 'total': 0, 'phishing': 0}
                 
                 timeline_dict[date_str]['total'] += 1
-                if record.get('risk_score', 0) >= 25 or len(record.get('prevention_actions', [])) > 0:
+                score = record.get('risk_score', 0)
+                suggested_action = record.get('suggested_action')
+                is_threat = (suggested_action in ['block', 'warn']) or (not suggested_action and score >= 50)
+                if is_threat:
                     timeline_dict[date_str]['phishing'] += 1
 
         top_threats_list = [
