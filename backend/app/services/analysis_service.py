@@ -15,6 +15,7 @@ from app.services.analytics_store import InMemoryAnalyticsStore
 from app.services.local_model_service import LocalPhishingModelService
 from app.services.mongo_store import MongoAnalyticsStore
 from app.services.ollama_service import OllamaAnalyticsService
+from app.services.whitelist_service import whitelist_service
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 AGENT_ROOT = PROJECT_ROOT / "ai-engine" / "agents"
@@ -60,6 +61,7 @@ class EmailAnalysisService:
             model=self.settings.ollama_model,
             api_key=self.settings.ollama_api_key_1,
         )
+        self.whitelist_service = whitelist_service
 
     def analyze(self, email_data: Any, extension_id: Optional[str] = None, user_id: Optional[str] = None) -> Dict[str, Any]:
         payload = self._normalize_payload(email_data)
@@ -137,9 +139,13 @@ class EmailAnalysisService:
                 attachment_analysis=attachment_analysis,
             )
 
+            sender_str = extracted_email.metadata.sender or payload.sender or ""
+            is_trusted, trusted_reason, trusted_domain = self.whitelist_service.is_trusted_sender(sender_str)
+
             processing_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
             ml_signal = self.model_service.score_text(
-                " | ".join(filter(None, [extracted_email.metadata.subject, extracted_email.content.body]))
+                " | ".join(filter(None, [extracted_email.metadata.subject, extracted_email.content.body])),
+                sender=sender_str,
             )
             
             # STRICT FUSION: Take the maximum of AI reasoning and ML detection so NOTHING slips through
@@ -155,6 +161,23 @@ class EmailAnalysisService:
                 threat_category_val = "spam"
             elif ml_signal["risk_score"] >= 60 and threat_category_val in ["none", "unknown"]:
                 threat_category_val = "spam" if ml_signal["risk_score"] < 80 else "scam"
+
+            # Whitelist / Trusted Sender Protection:
+            # If the email is from a verified educational / college sender (e.g. sairamce.edu.in),
+            # guarantee it will not be flagged as phishing unless it contains an outright critical malware payload.
+            if is_trusted and not getattr(payload, "isSpamFolder", False):
+                has_critical_payload = (
+                    any(att.get("risk_score", 0) >= 80 for att in attachment_analyses)
+                    or any(u.get("risk_score", 0) >= 80 for u in url_results)
+                )
+                if not has_critical_payload:
+                    fused_risk_score = 0
+                    threat_category_val = "none"
+                    decision_result.prevention_actions = []
+                    decision_result.detailed_reasons = [
+                        f"Trusted Sender: {trusted_reason}",
+                        "Verified Institutional Domain - No threats found"
+                    ]
                 
             risk_level = self._risk_level_from_score(fused_risk_score)
             
@@ -174,13 +197,27 @@ class EmailAnalysisService:
                         "type": "WARN_BANNER",
                         "reason": "Suspicious email detected"
                     })
+            elif fused_risk_score >= 25:
+                if not decision_result.prevention_actions and not is_trusted:
+                    decision_result.prevention_actions.append({
+                        "type": "WARN_BANNER",
+                        "reason": "Potential phishing indicators detected"
+                    })
+            elif is_trusted or fused_risk_score < 25:
+                suggested_action_val = "allow"
+                decision_result.prevention_actions = []
                 
-            enrichment = self.ollama_service.enrich_analysis(
-                risk_label=str(threat_category_val),
-                evidence_text=" | ".join(decision_result.detailed_reasons or []),
-                risk_level=risk_level,
-            )
-            explanation = enrichment.get("summary") or decision_result.explanation
+            if is_trusted and fused_risk_score == 0:
+                decision_result.prevention_actions = []
+                enrichment = {"provider": "trusted_whitelist", "summary": f"Verified Legitimate Email: Sender domain {trusted_domain} is recognized as an authenticated institutional sender ({trusted_reason}). No malicious attachments or deceptive links were found."}
+                explanation = enrichment["summary"]
+            else:
+                enrichment = self.ollama_service.enrich_analysis(
+                    risk_label=str(threat_category_val),
+                    evidence_text=" | ".join(decision_result.detailed_reasons or []),
+                    risk_level=risk_level,
+                )
+                explanation = enrichment.get("summary") or decision_result.explanation
             result = {
                 "success": True,
                 "data": {

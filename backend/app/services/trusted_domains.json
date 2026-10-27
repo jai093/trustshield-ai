@@ -1,0 +1,35 @@
+{
+  "trusted_emails": [
+    "exam@sairamce.edu.in",
+    "hod@sairamce.edu.in",
+    "info@sairamce.edu.in",
+    "placement@sairam.edu.in",
+    "placement@sairamce.edu.in",
+    "principal@sairamce.edu.in"
+  ],
+  "trusted_domains": [
+    "aicte-india.org",
+    "annauniv.edu",
+    "internshala.com",
+    "nptel.ac.in",
+    "sairam.edu.in",
+    "sairamce.edu.in",
+    "sairamgroup.in",
+    "swayam.gov.in"
+  ],
+  "trusted_tlds_and_suffixes": [
+    ".ac.in",
+    ".edu",
+    ".edu.in",
+    ".gov.in",
+    ".res.in"
+  ],
+  "institution_names": {
+    "sairamce.edu.in": "Sri Sairam College of Engineering",
+    "sairam.edu.in": "Sri Sairam Engineering College",
+    "sairamgroup.in": "Sairam Institutions",
+    "annauniv.edu": "Anna University",
+    "aicte-india.org": "AICTE India",
+    "nptel.ac.in": "NPTEL"
+  }
+}

@@ -1,19 +1,80 @@
 /**
  * Gmail Real-Time Phishing Detection Content Script
- * Uses trained model + Ollama API to analyze emails in real-time
- * Applies prevention actions: disable links, blur QR, show warning banner
+ * Uses trained model + multi-agent backend to analyze emails in real-time
+ * Protects legitimate college/placement emails and applies prevention actions for real threats.
  */
 
 (() => {
 const BACKEND_URL = 'https://trustshield-ai-coh2.onrender.com';
 const ANALYSIS_TIMEOUT = 5000;
 
+// Preconfigured trusted educational & institutional domains and emails
+const DEFAULT_TRUSTED_EMAILS = [
+  'placement@sairamce.edu.in',
+  'principal@sairamce.edu.in',
+  'hod@sairamce.edu.in',
+  'info@sairamce.edu.in',
+  'exam@sairamce.edu.in',
+  'placement@sairam.edu.in',
+];
+
+const DEFAULT_TRUSTED_DOMAINS = [
+  'sairamce.edu.in',
+  'sairam.edu.in',
+  'sairamgroup.in',
+  'annauniv.edu',
+  'aicte-india.org',
+  'nptel.ac.in',
+  'swayam.gov.in',
+];
+
+const TRUSTED_SUFFIXES = [
+  '.edu.in',
+  '.ac.in',
+  '.res.in',
+  '.gov.in',
+  '.edu',
+];
+
 class GmailPhishingDetector {
   constructor() {
     this.cache = new Map();
     this.analyzing = new Set();
     this.extensionId = chrome.runtime.id;
+    this.customTrustedDomains = [];
+    this.loadCustomTrustedDomains();
     this.initializeMutationObserver();
+  }
+
+  loadCustomTrustedDomains() {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+      chrome.storage.sync.get(['trustedDomains'], (res) => {
+        if (res && Array.isArray(res.trustedDomains)) {
+          this.customTrustedDomains = res.trustedDomains.map(d => d.toLowerCase().trim());
+        }
+      });
+    }
+  }
+
+  isTrustedSender(sender) {
+    if (!sender) return false;
+    const s = sender.toLowerCase().trim();
+
+    // 1. Direct email check
+    if (DEFAULT_TRUSTED_EMAILS.some(em => s.includes(em))) return true;
+
+    // 2. Exact domain or subdomain check
+    const allDomains = [...DEFAULT_TRUSTED_DOMAINS, ...this.customTrustedDomains];
+    if (allDomains.some(dom => s.endsWith('@' + dom) || s.includes('@' + dom) || s.endsWith('.' + dom) || s.includes('.' + dom))) {
+      return true;
+    }
+
+    // 3. Educational TLD suffix
+    if (TRUSTED_SUFFIXES.some(suf => s.endsWith(suf) || s.includes(suf + '>') || s.includes(suf + ')'))) {
+      return true;
+    }
+
+    return false;
   }
 
   initializeMutationObserver() {
@@ -40,7 +101,7 @@ class GmailPhishingDetector {
       characterData: false,
     });
 
-    console.log('[TrustShield] Gmail phishing detector initialized');
+    console.log('[TrustShield] Gmail phishing detector initialized with College Whitelist support');
   }
 
   async extractEmailFromDOM(element) {
@@ -57,7 +118,6 @@ class GmailPhishingDetector {
 
       const bodyElement = element.querySelector('[data-body-message-id], .a3s, [role="article"] div');
       if (!bodyElement) {
-        // Do not analyze if there is no email body (e.g., list view)
         return null; 
       }
       const body = bodyElement?.innerText || '';
@@ -120,8 +180,6 @@ class GmailPhishingDetector {
               reject(new Error(response?.error || 'Unknown error from background script'));
               return;
             }
-            
-            // Reconstruct the expected response format that applyPreventionActions expects
             resolve({
               success: true,
               data: response.analysis
@@ -147,19 +205,30 @@ class GmailPhishingDetector {
     }
   }
 
-  applyPreventionActions(element, analysis) {
+  applyPreventionActions(element, analysis, emailData) {
     if (!analysis || !analysis.data) return;
 
     const data = analysis.data;
     const riskScore = data.risk_score || 0;
     const suggestedAction = data.suggested_action?.toLowerCase();
-    
-    // Check if any prevention action suggests disabling
+    const isCollegeTrusted = this.isTrustedSender(emailData?.sender) ||
+      (data.detailed_reasons && data.detailed_reasons.some(r => r.toLowerCase().includes('trusted') || r.toLowerCase().includes('verified')));
+
+    // If trusted college email or safe low-risk email, show verified badge and never block
+    if (isCollegeTrusted || (riskScore < 30 && data.risk_level === 'LOW')) {
+      if (isCollegeTrusted || data.threat_category === 'none') {
+        this.addVerifiedBadge(element, emailData?.sender);
+      }
+      return;
+    }
+
     const shouldDisable = riskScore >= 70 || 
                          suggestedAction === 'block' || 
                          (data.prevention_actions && data.prevention_actions.some(a => ['DISABLE_LINK', 'DISABLE_BUTTONS', 'BLOCK_DOWNLOADS'].includes(a.type)));
 
-    this.addWarningBanner(element, data, riskScore);
+    if (riskScore >= 50 || suggestedAction === 'warn' || suggestedAction === 'block') {
+      this.addWarningBanner(element, data, riskScore);
+    }
 
     if (shouldDisable) {
       this.disableLinksInEmail(element);
@@ -167,6 +236,48 @@ class GmailPhishingDetector {
     } else if (riskScore >= 50 && riskScore < 70) {
       this.addRiskHighlight(element, 'MEDIUM', riskScore);
     }
+  }
+
+  addVerifiedBadge(element, sender) {
+    if (element.querySelector('[data-trustshield-verified]') || element.querySelector('[data-trustshield-banner]')) return;
+
+    const badge = document.createElement('div');
+    badge.setAttribute('data-trustshield-verified', 'true');
+    badge.style.cssText = `
+      background-color: #e8f5e9;
+      color: #1b5e20;
+      border: 1px solid #a5d6a7;
+      padding: 10px 16px;
+      margin-bottom: 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    `;
+
+    const icon = document.createElement('span');
+    icon.style.fontSize = '18px';
+    icon.textContent = '🛡️';
+
+    const text = document.createElement('span');
+    text.innerHTML = `<strong>TrustShield Verified:</strong> Legitimate Institution / College Email (${sender || 'Verified Sender'}). Safe to interact.`;
+
+    badge.appendChild(icon);
+    badge.appendChild(text);
+
+    let insertTarget = element.querySelector('.nH.hx') ||
+                       element.querySelector('.gE.iv.gt') ||
+                       element.querySelector('[data-body-message-id]')?.parentElement ||
+                       element.querySelector('.a3s')?.parentElement ||
+                       element.querySelector('[role="article"]');
+    if (!insertTarget) {
+      insertTarget = element;
+    }
+
+    insertTarget.insertBefore(badge, insertTarget.firstChild);
   }
 
   addWarningBanner(element, data, riskScore) {
@@ -196,32 +307,30 @@ class GmailPhishingDetector {
     `;
 
     const icon = document.createElement('span');
-    icon.textContent = 'Warning';
+    icon.textContent = '⚠️ Warning';
 
     const message = document.createElement('span');
     message.innerHTML = `
-      <strong>TrustShield Alert:</strong> Risk Score: ${riskScore}% - ${data.threat_category}
+      <strong>TrustShield Alert:</strong> Phishing Risk Detected (${riskScore}%) - ${data.threat_category?.toUpperCase() || 'SUSPICIOUS'}
     `;
 
     banner.appendChild(icon);
     banner.appendChild(message);
 
-    // Find a reliable place to insert the banner
-    let insertTarget = element.querySelector('.nH.hx') || // Header area in expanded email
-                       element.querySelector('.gE.iv.gt') || // Another common header class
+    let insertTarget = element.querySelector('.nH.hx') ||
+                       element.querySelector('.gE.iv.gt') ||
                        element.querySelector('[data-body-message-id]')?.parentElement ||
                        element.querySelector('.a3s')?.parentElement ||
                        element.querySelector('[role="article"]');
-                       
+                        
     if (!insertTarget) {
-      insertTarget = element; // Fallback
+      insertTarget = element;
     }
 
     insertTarget.insertBefore(banner, insertTarget.firstChild);
   }
 
   disableLinksInEmail(element) {
-    // Disable all links
     const links = element.querySelectorAll('a[href]');
     links.forEach((link) => {
       const originalHref = link.href;
@@ -233,14 +342,12 @@ class GmailPhishingDetector {
       link.title = `Disabled: ${originalHref}`;
     });
     
-    // Disable all images to prevent tracking pixels / malicious QR codes
     const images = element.querySelectorAll('img');
     images.forEach((img) => {
       img.style.filter = 'blur(10px)';
       img.title = 'Image blocked by TrustShield';
     });
     
-    // Disable all buttons
     const buttons = element.querySelectorAll('button, [role="button"]');
     buttons.forEach((btn) => {
       btn.disabled = true;
@@ -270,7 +377,7 @@ class GmailPhishingDetector {
     const analysis = await this.analyzeEmail(emailData);
     if (!analysis) return;
 
-    this.applyPreventionActions(element, analysis);
+    this.applyPreventionActions(element, analysis, emailData);
   }
 }
 

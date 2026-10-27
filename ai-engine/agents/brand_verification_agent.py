@@ -43,13 +43,13 @@ KNOWN_BRANDS = {
     "microsoft": {
         "official_domains": ["microsoft.com", "outlook.com", "office.com"],
         "official_colors": ["#00A4EF", "#FFB900", "#7FBA00"],
-        "keywords": ["microsoft", "office", "outlook", "teams"],
+        "keywords": ["microsoft", "office 365", "microsoft teams", "outlook account"],
         "logos": ["microsoft.png", "outlook.png"],
     },
     "google": {
         "official_domains": ["google.com", "gmail.com", "drive.google.com"],
         "official_colors": ["#4285F4", "#EA4335", "#FBBC04", "#34A853"],
-        "keywords": ["google", "gmail", "drive", "accounts.google"],
+        "keywords": ["google security", "gmail alert", "google drive", "accounts.google"],
         "logos": ["google.png", "gmail.png"],
     },
     "amazon": {
@@ -186,6 +186,17 @@ class BrandVerificationAgent:
                 
                 # Check if sender is from a suspicious domain
                 sender_domain = self.extract_domain_from_email(sender_email)
+                
+                # Check if sender is a recognized educational or trusted institutional domain
+                is_educational_or_trusted = any(
+                    sender_domain.endswith(suffix) for suffix in [".edu.in", ".ac.in", ".res.in", ".gov.in", ".edu"]
+                ) or sender_domain in ["sairamce.edu.in", "sairam.edu.in", "sairamgroup.in"]
+
+                # If educational/institutional sender, only flag if combined with deceptive credential harvesting
+                has_deceptive_context = any(term in combined_text for term in ["verify password", "account suspended", "reset credential", "confirm identity", "unusual activity"])
+                if is_educational_or_trusted and not has_deceptive_context:
+                    continue
+
                 is_suspicious = not any(
                     sender_domain == official or sender_domain.endswith("." + official)
                     for official in brand_info["official_domains"]

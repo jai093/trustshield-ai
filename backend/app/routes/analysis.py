@@ -54,3 +54,35 @@ async def get_dashboard_stats(x_user_id: Optional[str] = Header(None)) -> dict:
 async def get_email_history(x_user_id: Optional[str] = Header(None), limit: int = 50, offset: int = 0) -> dict:
     """Return a paginated history of analyzed emails."""
     return analysis_service.get_email_history(x_user_id, limit=limit, offset=offset)
+
+
+@router.get("/whitelist")
+async def get_whitelist() -> dict:
+    """Get the active list of trusted domains and email addresses."""
+    from app.services.whitelist_service import whitelist_service
+    return {
+        "success": True,
+        "trusted_emails": sorted(list(whitelist_service.trusted_emails)),
+        "trusted_domains": sorted(list(whitelist_service.trusted_domains)),
+        "trusted_suffixes": sorted(whitelist_service.trusted_suffixes),
+        "institution_names": whitelist_service.institution_names,
+    }
+
+
+@router.post("/whitelist")
+async def add_to_whitelist(data: dict) -> dict:
+    """Add a domain or email address to the trusted whitelist."""
+    from app.services.whitelist_service import whitelist_service
+    domain = data.get("domain")
+    email = data.get("email")
+    institution = data.get("institution")
+    if domain:
+        whitelist_service.add_trusted_domain(domain, institution)
+    if email:
+        whitelist_service.add_trusted_email(email, institution)
+    return {
+        "success": True,
+        "message": "Whitelist updated successfully",
+        "domain": domain,
+        "email": email,
+    }
